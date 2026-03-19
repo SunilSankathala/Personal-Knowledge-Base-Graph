@@ -1,7 +1,1 @@
-{
-  "cleanUrls": true,
-  "rewrites": [
-    { "source": "/", "destination": "/knowledge-graph.html" },
-    { "source": "/(.*)", "destination": "/knowledge-graph.html" }
-  ]
-}
+{}

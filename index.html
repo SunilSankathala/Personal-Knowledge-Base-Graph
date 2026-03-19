@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Neural Graph</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;background:#07070f;color:#c8c5e0;font-family:'Segoe UI',system-ui,sans-serif;overflow:hidden;}
+
+#app{display:flex;height:100vh;}
+
+/* ── SIDEBAR ── */
+#sidebar{
+  width:272px;min-width:272px;height:100vh;
+  background:#0b0b15;border-right:1px solid rgba(0,245,200,0.1);
+  display:flex;flex-direction:column;z-index:10;
+}
+.s-logo{padding:18px 18px 14px;border-bottom:1px solid #1a1a2e;}
+.s-logo h1{font-size:11px;letter-spacing:4px;color:#00f5c8;font-family:'Courier New',monospace;text-transform:uppercase;}
+.s-logo p{font-size:9px;color:#3a3858;letter-spacing:2px;margin-top:2px;font-family:'Courier New',monospace;}
+.s-stats{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:10px 14px;border-bottom:1px solid #1a1a2e;}
+.s-stat{background:#0f0f1e;border:1px solid #1a1a2e;border-radius:5px;padding:8px 10px;}
+.s-stat-v{font-size:22px;font-weight:700;color:#00f5c8;font-family:'Courier New',monospace;line-height:1;}
+.s-stat-l{font-size:9px;letter-spacing:2px;color:#3a3858;text-transform:uppercase;margin-top:2px;}
+
+.tabs{display:flex;border-bottom:1px solid #1a1a2e;}
+.tab{flex:1;padding:9px 4px;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#3a3858;background:none;border:none;cursor:pointer;transition:all 0.2s;font-family:'Courier New',monospace;}
+.tab.on{color:#00f5c8;border-bottom:2px solid #00f5c8;margin-bottom:-1px;}
+.tab:hover:not(.on){color:#9896a8;}
+
+.pane{display:none;flex:1;overflow-y:auto;flex-direction:column;min-height:0;}
+.pane.on{display:flex;}
+::-webkit-scrollbar{width:3px;}
+::-webkit-scrollbar-thumb{background:#1a1a2e;border-radius:2px;}
+
+/* node list */
+.nl{padding:6px;flex:1;overflow-y:auto;}
+.ni{display:flex;align-items:center;gap:7px;padding:8px 9px;border-radius:5px;cursor:pointer;border:1px solid transparent;margin-bottom:2px;transition:all 0.15s;}
+.ni:hover{background:#0f0f1e;border-color:#1a1a2e;}
+.ni.on{background:rgba(0,245,200,0.05);border-color:rgba(0,245,200,0.2);}
+.ni-dot{width:6px;height:6px;border-radius:50%;background:#7b5cfa;flex-shrink:0;}
+.ni.on .ni-dot{background:#00f5c8;}
+.ni-name{flex:1;font-size:12px;color:#c8c5e0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ni-x{padding:2px 5px;background:none;border:none;color:#3a3858;cursor:pointer;font-size:14px;border-radius:3px;transition:color 0.15s;}
+.ni-x:hover{color:#f5426c;}
+
+/* detail */
+#det{padding:12px;border-top:1px solid #1a1a2e;flex-shrink:0;background:rgba(0,0,0,0.2);}
+.d-hint{font-size:10px;color:#3a3858;font-family:'Courier New',monospace;padding:4px 0 8px;}
+.d-lbl{font-size:9px;letter-spacing:2px;color:#3a3858;text-transform:uppercase;display:block;margin-bottom:4px;font-family:'Courier New',monospace;}
+.d-in{width:100%;background:#0f0f1e;border:1px solid #1a1a2e;border-radius:4px;color:#c8c5e0;font-size:12px;padding:6px 8px;outline:none;transition:border-color 0.2s;font-family:inherit;resize:none;}
+.d-in:focus{border-color:#00f5c8;}
+textarea.d-in{height:58px;}
+.d-row{margin-bottom:9px;}
+.ctag{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:12px;background:rgba(123,92,250,0.1);border:1px solid rgba(123,92,250,0.25);font-size:10px;color:#a899f5;margin:2px;font-family:'Courier New',monospace;}
+.ctag-x{cursor:pointer;color:#3a3858;margin-left:1px;}
+.ctag-x:hover{color:#f5426c;}
+
+/* forms */
+.fsec{padding:12px 14px;border-bottom:1px solid #1a1a2e;}
+.fsec-t{font-size:9px;letter-spacing:3px;color:#00f5c8;text-transform:uppercase;font-family:'Courier New',monospace;margin-bottom:10px;}
+.frow{margin-bottom:8px;}
+.frow label{display:block;font-size:9px;letter-spacing:2px;color:#3a3858;text-transform:uppercase;margin-bottom:4px;font-family:'Courier New',monospace;}
+.fi{width:100%;background:#0f0f1e;border:1px solid #1a1a2e;border-radius:4px;color:#c8c5e0;font-size:12px;padding:6px 8px;outline:none;font-family:inherit;transition:border-color 0.2s;}
+.fi:focus{border-color:#00f5c8;}
+.fi option{background:#0b0b15;}
+textarea.fi{height:54px;resize:none;}
+
+.btn{padding:7px 12px;border-radius:4px;font-size:9px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all 0.2s;border:1px solid;font-family:'Courier New',monospace;display:inline-flex;align-items:center;justify-content:center;}
+.btn-g{background:rgba(0,245,200,0.06);border-color:rgba(0,245,200,0.3);color:#00f5c8;width:100%;}
+.btn-g:hover{background:rgba(0,245,200,0.12);}
+.btn-g:disabled{opacity:0.3;cursor:not-allowed;}
+.btn-r{background:rgba(245,66,108,0.06);border-color:rgba(245,66,108,0.25);color:#f5426c;padding:4px 9px;font-size:9px;}
+.btn-r:hover{background:rgba(245,66,108,0.12);}
+
+.el{padding:6px;overflow-y:auto;flex:1;}
+.ei{display:flex;align-items:center;gap:5px;padding:6px 7px;border-radius:4px;font-size:11px;transition:background 0.15s;}
+.ei:hover{background:#0f0f1e;}
+.ei-lbl{font-size:9px;color:#7b5cfa;background:rgba(123,92,250,0.08);border:1px solid rgba(123,92,250,0.2);padding:1px 5px;border-radius:2px;margin-left:auto;font-family:'Courier New',monospace;}
+.ei-x{padding:1px 5px;background:none;border:none;color:#3a3858;cursor:pointer;font-size:12px;}
+.ei-x:hover{color:#f5426c;}
+
+/* canvas */
+#wrap{flex:1;position:relative;overflow:hidden;}
+#c{display:block;width:100%;height:100%;}
+
+/* hud */
+#hud{position:absolute;top:14px;right:14px;display:flex;flex-direction:column;gap:5px;}
+.hb{width:34px;height:34px;border-radius:5px;background:rgba(11,11,21,0.92);border:1px solid rgba(0,245,200,0.15);color:#00f5c8;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.2s;font-family:'Courier New',monospace;}
+.hb:hover{background:rgba(0,245,200,0.08);}
+#badge{position:absolute;top:14px;left:14px;font-size:9px;letter-spacing:3px;color:#00f5c8;font-family:'Courier New',monospace;padding:4px 9px;background:rgba(0,245,200,0.05);border:1px solid rgba(0,245,200,0.15);border-radius:3px;}
+#tip{position:absolute;bottom:14px;left:14px;font-size:9px;letter-spacing:1px;color:#3a3858;font-family:'Courier New',monospace;line-height:2;pointer-events:none;}
+
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#0b0b15;border:1px solid rgba(0,245,200,0.35);border-radius:4px;padding:7px 16px;font-size:10px;letter-spacing:1.5px;color:#00f5c8;font-family:'Courier New',monospace;z-index:999;opacity:0;transition:opacity 0.2s;pointer-events:none;}
+#toast.on{opacity:1;}
+</style>
+</head>
+<body>
+<div id="app">
+<div id="sidebar">
+  <div class="s-logo"><h1>Neural Graph</h1><p>Knowledge System v3.0</p></div>
+  <div class="s-stats">
+    <div class="s-stat"><div class="s-stat-v" id="sn">0</div><div class="s-stat-l">Nodes</div></div>
+    <div class="s-stat"><div class="s-stat-v" id="se">0</div><div class="s-stat-l">Edges</div></div>
+  </div>
+  <div class="tabs">
+    <button class="tab on" onclick="swTab('nodes',this)">Nodes</button>
+    <button class="tab" onclick="swTab('edges',this)">Edges</button>
+    <button class="tab" onclick="swTab('add',this)">+ Add</button>
+  </div>
+
+  <div class="pane on" id="pane-nodes">
+    <div class="nl" id="nl"></div>
+    <div id="det">
+      <div class="d-hint" id="d-hint">// select a node to edit</div>
+      <div id="d-body" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <span style="font-size:9px;letter-spacing:2px;color:#00f5c8;font-family:'Courier New',monospace;text-transform:uppercase;">Edit Node</span>
+          <button class="btn btn-r" onclick="delSel()">Delete</button>
+        </div>
+        <div class="d-row"><label class="d-lbl">Title</label><input class="d-in" id="d-t" oninput="upT(this.value)"></div>
+        <div class="d-row"><label class="d-lbl">Note</label><textarea class="d-in" id="d-n" oninput="upN(this.value)"></textarea></div>
+        <div class="d-row"><label class="d-lbl">Connections</label><div id="d-c"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="pane" id="pane-edges">
+    <div class="el" id="el"></div>
+  </div>
+
+  <div class="pane" id="pane-add">
+    <div class="fsec">
+      <div class="fsec-t">// New Node</div>
+      <div class="frow"><label>Title</label><input class="fi" id="nt" placeholder="Topic name…" oninput="vN()"></div>
+      <div class="frow"><label>Note</label><textarea class="fi" id="nn" placeholder="Description…"></textarea></div>
+      <button class="btn btn-g" id="btn-n" onclick="addNode()" disabled>Add Node</button>
+    </div>
+    <div class="fsec">
+      <div class="fsec-t">// New Edge</div>
+      <div class="frow"><label>From</label><select class="fi" id="ef" onchange="vE()"><option value="">Select…</option></select></div>
+      <div class="frow"><label>To</label><select class="fi" id="et" onchange="vE()"><option value="">Select…</option></select></div>
+      <div class="frow"><label>Label</label><input class="fi" id="el2" placeholder='"relates to"…' oninput="vE()"></div>
+      <button class="btn btn-g" id="btn-e" onclick="addEdge()" disabled>Add Edge</button>
+    </div>
+  </div>
+</div>
+
+<div id="wrap">
+  <canvas id="c"></canvas>
+  <div id="badge">// NAVIGATE MODE</div>
+  <div id="hud">
+    <button class="hb" onclick="zoomBy(1.2)">+</button>
+    <button class="hb" onclick="zoomBy(0.83)">−</button>
+    <button class="hb" onclick="fitAll()" style="font-size:12px;">⊞</button>
+    <button class="hb" onclick="scatter()" style="font-size:12px;">⟳</button>
+  </div>
+  <div id="tip">drag nodes · scroll to zoom · click to select</div>
+</div>
+</div>
+<div id="toast"></div>
+
+<script>
+// ── DATA ──────────────────────────────────────────────────────
+const SK = 'ng_v4';
+let nodes = [], edges = [], sel = null, idc = 200;
+
+const SEEDS = [
+  {id:'1',title:'React',note:'A JavaScript library for building user interfaces using components.'},
+  {id:'2',title:'Next.js',note:'React framework with SSR, routing, and API support built in.'},
+  {id:'3',title:'TypeScript',note:'Typed superset of JavaScript that compiles to plain JS.'},
+  {id:'4',title:'State Mgmt',note:'Patterns for managing shared application state.'},
+  {id:'5',title:'Component Design',note:'Principles for building reusable, composable UI components.'},
+  {id:'6',title:'Performance',note:'Memoization, lazy loading, and virtualization.'},
+  {id:'7',title:'Testing',note:'Unit, integration, and e2e testing strategies.'},
+  {id:'8',title:'CSS & Styling',note:'Tailwind, CSS Modules, styled-components.'}
+];
+const SEEDGE = [
+  {id:'e1',s:'2',t:'1',label:'built on'},
+  {id:'e2',s:'1',t:'3',label:'pairs with'},
+  {id:'e3',s:'1',t:'4',label:'uses'},
+  {id:'e4',s:'1',t:'5',label:'guides'},
+  {id:'e5',s:'2',t:'6',label:'improves'},
+  {id:'e6',s:'1',t:'7',label:'requires'},
+  {id:'e7',s:'1',t:'8',label:'styled with'},
+  {id:'e8',s:'4',t:'6',label:'impacts'},
+  {id:'e9',s:'5',t:'6',label:'impacts'}
+];
+
+function nb(id){ return nodes.find(n=>n.id===id); }
+
+function load(){
+  try {
+    const raw = localStorage.getItem(SK);
+    if(raw){ const d=JSON.parse(raw); nodes=d.n; edges=d.e; idc=d.c||200; return; }
+  } catch(e){}
+  layoutSeeds();
+}
+
+function layoutSeeds(){
+  const W = canvas.clientWidth, H = canvas.clientHeight;
+  const cx = W/2, cy = H/2, r = Math.min(W,H)*0.3;
+  nodes = SEEDS.map((s,i)=>({
+    ...s,
+    x: cx + r*Math.cos(i/SEEDS.length*Math.PI*2 - Math.PI/2),
+    y: cy + r*Math.sin(i/SEEDS.length*Math.PI*2 - Math.PI/2),
+    vx:0, vy:0
+  }));
+  edges = SEEDGE.map(e=>({...e}));
+  save();
+}
+
+function save(){
+  localStorage.setItem(SK, JSON.stringify({n:nodes,e:edges,c:idc}));
+}
+
+// ── CANVAS SETUP ──────────────────────────────────────────────
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W=0, H=0, dpr=1;
+
+function resize(){
+  dpr = window.devicePixelRatio || 1;
+  W = canvas.clientWidth;
+  H = canvas.clientHeight;
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+}
+
+// ── CAMERA ────────────────────────────────────────────────────
+let cam = {x:0, y:0, s:1};
+
+function w2s(wx,wy){ return { x: wx*cam.s + cam.x, y: wy*cam.s + cam.y }; }
+function s2w(sx,sy){ return { x: (sx-cam.x)/cam.s, y: (sy-cam.y)/cam.s }; }
+
+// ── PHYSICS ───────────────────────────────────────────────────
+// Very gentle forces, hard velocity cap, strong damping
+const REPEL  = 4000;
+const SPRING = 0.018;
+const REST   = 150;
+const DAMP   = 0.82;
+const GRAV   = 0.0008;
+const VMAX   = 4;
+
+function stepPhysics(){
+  const cx = W/2, cy = H/2;
+  nodes.forEach(a=>{
+    if(a._pinned) return;
+    let fx=0, fy=0;
+
+    // gravity toward center
+    fx += (cx - a.x) * GRAV;
+    fy += (cy - a.y) * GRAV;
+
+    // repulsion from every other node
+    nodes.forEach(b=>{
+      if(b===a) return;
+      const dx=a.x-b.x, dy=a.y-b.y;
+      const d2 = dx*dx + dy*dy;
+      if(d2 < 1) return;
+      const d = Math.sqrt(d2);
+      const f = REPEL / d2;
+      fx += (dx/d)*f;
+      fy += (dy/d)*f;
+    });
+
+    // spring attraction along edges
+    edges.forEach(e=>{
+      const other = e.s===a.id ? nb(e.t) : e.t===a.id ? nb(e.s) : null;
+      if(!other) return;
+      const dx=other.x-a.x, dy=other.y-a.y;
+      const d = Math.sqrt(dx*dx+dy*dy) || 1;
+      const f = (d - REST) * SPRING;
+      fx += (dx/d)*f;
+      fy += (dy/d)*f;
+    });
+
+    a.vx = (a.vx + fx) * DAMP;
+    a.vy = (a.vy + fy) * DAMP;
+
+    // hard velocity cap
+    const spd = Math.sqrt(a.vx*a.vx + a.vy*a.vy);
+    if(spd > VMAX){ a.vx = a.vx/spd*VMAX; a.vy = a.vy/spd*VMAX; }
+
+    a.x += a.vx;
+    a.y += a.vy;
+  });
+}
+
+// ── STAR FIELD ────────────────────────────────────────────────
+let stars = [];
+function makeStars(){
+  stars = Array.from({length:180},()=>({
+    x: Math.random()*2000-500, y: Math.random()*1200-200,
+    r: Math.random()*1+0.2,
+    a: Math.random()*0.5+0.05,
+    da: (Math.random()-0.5)*0.002
+  }));
+}
+
+// ── DRAW ──────────────────────────────────────────────────────
+let tick = 0;
+
+function draw(){
+  requestAnimationFrame(draw);
+  tick += 0.012;
+
+  resize(); // handles resize lazily (cheap if no change)
+  stepPhysics();
+
+  const px = dpr;
+  ctx.save();
+  ctx.scale(px, px);
+  ctx.clearRect(0,0,W,H);
+
+  // ── stars (world-space, scroll with cam a little for parallax) ──
+  ctx.save();
+  ctx.translate(cam.x*0.08, cam.y*0.08);
+  stars.forEach(s=>{
+    s.a += s.da;
+    if(s.a<0.04||s.a>0.55) s.da*=-1;
+    ctx.beginPath();
+    ctx.arc(s.x % W, s.y % H, s.r, 0, Math.PI*2);
+    ctx.fillStyle = `rgba(200,197,224,${s.a.toFixed(2)})`;
+    ctx.fill();
+  });
+  ctx.restore();
+
+  // ── scan line ──
+  const scanY = ((tick*18) % (H+120)) - 60;
+  ctx.save();
+  ctx.fillStyle = 'rgba(0,245,200,0.025)';
+  ctx.fillRect(0, scanY, W, 2);
+  ctx.restore();
+
+  // ── graph (camera transform) ──
+  ctx.save();
+  ctx.translate(cam.x, cam.y);
+  ctx.scale(cam.s, cam.s);
+
+  // edges
+  edges.forEach(e=>{
+    const a=nb(e.s), b=nb(e.t);
+    if(!a||!b) return;
+    const isSel = sel && (e.s===sel||e.t===sel);
+
+    const dx=b.x-a.x, dy=b.y-a.y;
+    const d = Math.sqrt(dx*dx+dy*dy)||1;
+    const R = 24;
+    const x1=a.x+dx/d*R, y1=a.y+dy/d*R;
+    const x2=b.x-dx/d*(R+8), y2=b.y-dy/d*(R+8);
+
+    ctx.beginPath();
+    ctx.moveTo(x1,y1); ctx.lineTo(x2,y2);
+    ctx.strokeStyle = isSel ? 'rgba(0,245,200,0.75)' : 'rgba(123,92,250,0.22)';
+    ctx.lineWidth = isSel ? 1.5 : 1;
+    ctx.stroke();
+
+    // arrowhead
+    const ang = Math.atan2(y2-y1,x2-x1);
+    ctx.save();
+    ctx.translate(x2,y2); ctx.rotate(ang);
+    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(-9,-4); ctx.lineTo(-9,4); ctx.closePath();
+    ctx.fillStyle = isSel ? 'rgba(0,245,200,0.75)' : 'rgba(123,92,250,0.28)';
+    ctx.fill();
+    ctx.restore();
+
+    // edge label
+    const mx=(x1+x2)/2, my=(y1+y2)/2;
+    const nx=-dy/d*10, ny=dx/d*10;
+    ctx.font = '500 9px "Courier New",monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const tw = ctx.measureText(e.label).width + 8;
+    ctx.fillStyle = 'rgba(7,7,15,0.85)';
+    ctx.beginPath();
+    ctx.roundRect(mx+nx-tw/2, my+ny-7, tw, 14, 3);
+    ctx.fill();
+    ctx.fillStyle = isSel ? 'rgba(0,245,200,0.9)' : 'rgba(123,92,250,0.65)';
+    ctx.fillText(e.label, mx+nx, my+ny);
+
+    // moving particle on selected edge
+    if(isSel){
+      const p = (tick*0.4) % 1;
+      ctx.beginPath();
+      ctx.arc(a.x+dx*p, a.y+dy*p, 2.5, 0, Math.PI*2);
+      ctx.fillStyle = '#00f5c8';
+      ctx.fill();
+    }
+  });
+
+  // nodes
+  nodes.forEach(n=>{
+    const isSel = n.id===sel;
+    const isConn = sel && sel!==n.id && edges.some(e=>
+      (e.s===sel&&e.t===n.id)||(e.t===sel&&e.s===n.id)
+    );
+
+    // pulse ring — STROKE ONLY, fixed radius range
+    if(isSel){
+      const pulse = Math.sin(tick*3.5)*4; // oscillates ±4px around 30
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, 30+pulse, 0, Math.PI*2);
+      ctx.strokeStyle = `rgba(0,245,200,0.22)`;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+    if(isConn){
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, 28, 0, Math.PI*2);
+      ctx.strokeStyle = 'rgba(123,92,250,0.2)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+
+    // node background — solid fill to prevent bleed-through
+    ctx.beginPath();
+    ctx.arc(n.x, n.y, 22, 0, Math.PI*2);
+    ctx.fillStyle = '#0b0b18';
+    ctx.fill();
+
+    // colored ring
+    ctx.beginPath();
+    ctx.arc(n.x, n.y, 22, 0, Math.PI*2);
+    ctx.strokeStyle = isSel ? '#00f5c8' : isConn ? 'rgba(123,92,250,0.7)' : 'rgba(123,92,250,0.28)';
+    ctx.lineWidth = isSel ? 1.8 : 1;
+    ctx.stroke();
+
+    // dot grid inside — properly clipped
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(n.x, n.y, 20, 0, Math.PI*2);
+    ctx.clip();
+    for(let gx=-18; gx<=18; gx+=7){
+      for(let gy=-18; gy<=18; gy+=7){
+        if(gx*gx+gy*gy > 340) continue;
+        ctx.beginPath();
+        ctx.arc(n.x+gx, n.y+gy, 0.8, 0, Math.PI*2);
+        ctx.fillStyle = isSel ? 'rgba(0,245,200,0.2)' : 'rgba(123,92,250,0.12)';
+        ctx.fill();
+      }
+    }
+    ctx.restore();
+
+    // short label inside node
+    const short = n.title.length > 9 ? n.title.slice(0,8)+'…' : n.title;
+    ctx.font = '500 10px "Segoe UI",system-ui,sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = isSel ? '#00f5c8' : isConn ? '#a899f5' : '#c8c5e0';
+    ctx.fillText(short, n.x, n.y);
+
+    // full title below
+    ctx.font = '400 9px "Courier New",monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillStyle = isSel ? 'rgba(0,245,200,0.5)' : 'rgba(107,104,138,0.55)';
+    ctx.fillText(n.title, n.x, n.y+26);
+  });
+
+  ctx.restore(); // end camera
+  ctx.restore(); // end dpr scale
+}
+
+// ── INPUT ─────────────────────────────────────────────────────
+let dragNode = null, dragOff = {x:0,y:0}, panning = false, panStart = {x:0,y:0};
+let moved = false;
+
+function clientToWorld(cx,cy){
+  const r = canvas.getBoundingClientRect();
+  return s2w(cx - r.left, cy - r.top);
+}
+
+function hitNode(cx,cy){
+  const {x,y} = clientToWorld(cx,cy);
+  return nodes.find(n=>(n.x-x)**2+(n.y-y)**2 < 24*24) || null;
+}
+
+canvas.addEventListener('mousedown', e=>{
+  moved = false;
+  const n = hitNode(e.clientX, e.clientY);
+  if(n){
+    dragNode = n;
+    const w = clientToWorld(e.clientX, e.clientY);
+    dragOff = {x: w.x - n.x, y: w.y - n.y};
+    n._pinned = true;
+  } else {
+    panning = true;
+    panStart = {x: e.clientX - cam.x, y: e.clientY - cam.y};
+  }
+});
+
+window.addEventListener('mousemove', e=>{
+  if(dragNode){
+    moved = true;
+    const w = clientToWorld(e.clientX, e.clientY);
+    dragNode.x = w.x - dragOff.x;
+    dragNode.y = w.y - dragOff.y;
+    dragNode.vx = 0; dragNode.vy = 0;
+  } else if(panning){
+    moved = true;
+    cam.x = e.clientX - panStart.x;
+    cam.y = e.clientY - panStart.y;
+  }
+});
+
+window.addEventListener('mouseup', e=>{
+  if(dragNode){ dragNode._pinned = false; save(); }
+  if(!moved){
+    const n = hitNode(e.clientX, e.clientY);
+    if(n) selNode(n.id);
+    else { sel=null; renderPanel(); }
+  }
+  dragNode = null; panning = false;
+});
+
+canvas.addEventListener('wheel', e=>{
+  e.preventDefault();
+  const factor = e.deltaY > 0 ? 0.88 : 1.13;
+  const r = canvas.getBoundingClientRect();
+  const mx = e.clientX - r.left, my = e.clientY - r.top;
+  cam.x = mx - (mx - cam.x) * factor;
+  cam.y = my - (my - cam.y) * factor;
+  cam.s = Math.max(0.15, Math.min(5, cam.s * factor));
+}, {passive:false});
+
+// touch
+canvas.addEventListener('touchstart', e=>{
+  moved = false;
+  if(e.touches.length!==1) return;
+  const t = e.touches[0];
+  const n = hitNode(t.clientX, t.clientY);
+  if(n){
+    dragNode=n;
+    const w=clientToWorld(t.clientX,t.clientY);
+    dragOff={x:w.x-n.x,y:w.y-n.y};
+    n._pinned=true;
+  } else {
+    panning=true;
+    panStart={x:t.clientX-cam.x,y:t.clientY-cam.y};
+  }
+},{passive:true});
+canvas.addEventListener('touchmove', e=>{
+  if(e.touches.length!==1) return;
+  moved=true;
+  const t=e.touches[0];
+  if(dragNode){ const w=clientToWorld(t.clientX,t.clientY); dragNode.x=w.x-dragOff.x; dragNode.y=w.y-dragOff.y; dragNode.vx=0;dragNode.vy=0; }
+  else if(panning){ cam.x=t.clientX-panStart.x; cam.y=t.clientY-panStart.y; }
+},{passive:true});
+canvas.addEventListener('touchend',e=>{
+  if(dragNode)dragNode._pinned=false;
+  dragNode=null;panning=false;
+});
+
+// ── ZOOM / FIT ────────────────────────────────────────────────
+function zoomBy(f){
+  cam.x = W/2 - (W/2 - cam.x)*f;
+  cam.y = H/2 - (H/2 - cam.y)*f;
+  cam.s = Math.max(0.15, Math.min(5, cam.s*f));
+}
+
+function fitAll(){
+  if(!nodes.length) return;
+  const xs=nodes.map(n=>n.x), ys=nodes.map(n=>n.y);
+  const minX=Math.min(...xs)-50, maxX=Math.max(...xs)+50;
+  const minY=Math.min(...ys)-50, maxY=Math.max(...ys)+50;
+  const s = Math.min((W-80)/(maxX-minX), (H-80)/(maxY-minY), 2);
+  cam.s = s;
+  cam.x = W/2 - (minX+maxX)/2*s;
+  cam.y = H/2 - (minY+maxY)/2*s;
+}
+
+function scatter(){
+  const cx=W/2, cy=H/2, r=Math.min(W,H)*0.28;
+  nodes.forEach((n,i)=>{
+    n.x = cx + r*Math.cos(i/nodes.length*Math.PI*2);
+    n.y = cy + r*Math.sin(i/nodes.length*Math.PI*2);
+    n.vx=(Math.random()-0.5)*0.5;
+    n.vy=(Math.random()-0.5)*0.5;
+  });
+}
+
+// ── PANEL ─────────────────────────────────────────────────────
+function selNode(id){ sel = (id===sel ? null : id); renderPanel(); swTab('nodes', document.querySelector('.tab.on')); }
+
+function renderPanel(){
+  document.getElementById('sn').textContent = nodes.length;
+  document.getElementById('se').textContent = edges.length;
+
+  // node list
+  const nl = document.getElementById('nl');
+  nl.innerHTML = '';
+  if(!nodes.length){ nl.innerHTML='<div style="padding:14px;font-size:9px;color:#3a3858;font-family:Courier New,monospace;letter-spacing:1px;">// no nodes yet</div>'; }
+  nodes.forEach(n=>{
+    const d=document.createElement('div');
+    d.className='ni'+(n.id===sel?' on':'');
+    d.innerHTML=`<div class="ni-dot"></div><div class="ni-name">${esc(n.title)}</div><button class="ni-x" onclick="event.stopPropagation();delN('${n.id}')">×</button>`;
+    d.onclick=()=>{ selNode(n.id); focusN(n.id); };
+    nl.appendChild(d);
+  });
+
+  // detail
+  const hint=document.getElementById('d-hint'), body=document.getElementById('d-body');
+  if(!sel||!nb(sel)){ hint.style.display=''; body.style.display='none'; return; }
+  hint.style.display='none'; body.style.display='';
+  const n=nb(sel);
+  const dt=document.getElementById('d-t'), dn=document.getElementById('d-n');
+  if(document.activeElement!==dt) dt.value=n.title;
+  if(document.activeElement!==dn) dn.value=n.note||'';
+  const conns=edges.filter(e=>e.s===n.id||e.t===n.id);
+  const dc=document.getElementById('d-c');
+  if(!conns.length){ dc.innerHTML='<span style="font-size:9px;color:#3a3858;font-family:Courier New,monospace;">// none</span>'; }
+  else dc.innerHTML = conns.map(e=>{
+    const o=nb(e.s===n.id?e.t:e.s);
+    return `<div class="ctag">${e.s===n.id?'→':'←'} ${esc(o?.title||'?')} <em style="color:#3a3858;font-style:normal"> · ${esc(e.label)}</em><span class="ctag-x" onclick="delE('${e.id}')">×</span></div>`;
+  }).join('');
+
+  // edge list
+  const el=document.getElementById('el');
+  el.innerHTML='';
+  if(!edges.length){ el.innerHTML='<div style="padding:14px;font-size:9px;color:#3a3858;font-family:Courier New,monospace;letter-spacing:1px;">// no edges yet</div>'; return; }
+  edges.forEach(e=>{
+    const a=nb(e.s),b=nb(e.t); if(!a||!b)return;
+    const d=document.createElement('div'); d.className='ei';
+    d.innerHTML=`<span style="font-size:11px">${esc(a.title)}</span><span style="color:#3a3858;font-size:10px"> → </span><span style="font-size:11px">${esc(b.title)}</span><span class="ei-lbl">${esc(e.label)}</span><button class="ei-x" onclick="delE('${e.id}')">×</button>`;
+    el.appendChild(d);
+  });
+
+  // selects
+  const opts=nodes.map(n=>`<option value="${n.id}">${esc(n.title)}</option>`).join('');
+  ['ef','et'].forEach(id=>{ const el=document.getElementById(id); const v=el.value; el.innerHTML='<option value="">Select…</option>'+opts; if(v)el.value=v; });
+}
+
+function focusN(id){
+  const n=nb(id); if(!n)return;
+  cam.x = W/2 - n.x*cam.s;
+  cam.y = H/2 - n.y*cam.s;
+}
+
+function swTab(name, btn){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
+  document.querySelector(`[onclick*="${name}"]`)?.classList.add('on');
+  document.querySelectorAll('.pane').forEach(p=>p.classList.remove('on'));
+  document.getElementById('pane-'+name).classList.add('on');
+}
+
+// ── CRUD ──────────────────────────────────────────────────────
+function addNode(){
+  const title=document.getElementById('nt').value.trim();
+  const note=document.getElementById('nn').value.trim();
+  if(!title)return;
+  const w=s2w(W/2, H/2);
+  const n={id:String(idc++),title,note,x:w.x+(Math.random()-0.5)*80,y:w.y+(Math.random()-0.5)*80,vx:0,vy:0};
+  nodes.push(n); sel=n.id;
+  document.getElementById('nt').value='';
+  document.getElementById('nn').value='';
+  document.getElementById('btn-n').disabled=true;
+  save(); renderPanel(); toast('NODE ADDED');
+}
+
+function delN(id){
+  nodes=nodes.filter(n=>n.id!==id);
+  edges=edges.filter(e=>e.s!==id&&e.t!==id);
+  if(sel===id)sel=null;
+  save(); renderPanel(); toast('NODE DELETED');
+}
+function delSel(){ if(sel)delN(sel); }
+
+function addEdge(){
+  const f=document.getElementById('ef').value;
+  const t=document.getElementById('et').value;
+  const l=document.getElementById('el2').value.trim();
+  if(!f||!t||!l||f===t)return;
+  if(edges.some(e=>e.s===f&&e.t===t)){toast('EDGE EXISTS');return;}
+  edges.push({id:'e'+idc++,s:f,t:t,label:l});
+  document.getElementById('ef').value='';
+  document.getElementById('et').value='';
+  document.getElementById('el2').value='';
+  document.getElementById('btn-e').disabled=true;
+  save(); renderPanel(); toast('EDGE ADDED');
+}
+
+function delE(id){
+  edges=edges.filter(e=>e.id!==id);
+  save(); renderPanel(); toast('EDGE REMOVED');
+}
+
+function upT(v){ const n=nb(sel); if(n){n.title=v;save();renderPanel();} }
+function upN(v){ const n=nb(sel); if(n){n.note=v;save();} }
+
+// ── UTILS ─────────────────────────────────────────────────────
+function vN(){ document.getElementById('btn-n').disabled=!document.getElementById('nt').value.trim(); }
+function vE(){
+  const f=document.getElementById('ef').value,t=document.getElementById('et').value,l=document.getElementById('el2').value.trim();
+  document.getElementById('btn-e').disabled=!(f&&t&&l&&f!==t);
+}
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+let toastT;
+function toast(m){ const el=document.getElementById('toast'); el.textContent='// '+m; el.classList.add('on'); clearTimeout(toastT); toastT=setTimeout(()=>el.classList.remove('on'),1800); }
+
+// ── BOOT ──────────────────────────────────────────────────────
+resize();
+makeStars();
+load();
+renderPanel();
+draw();
+setTimeout(fitAll, 80);
+window.addEventListener('resize', ()=>{ resize(); });
+</script>
+</body>
+</html>
